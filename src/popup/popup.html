@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FreeTube Extension</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    
+    <!-- Header -->
+    <div class="header">
+      <div class="header-title">
+        <span class="header-icon">▶️</span>
+        <span class="header-text">FreeTube Extension</span>
+      </div>
+      <div class="header-version">v2.0.0</div>
+    </div>
+
+    <!-- FT Mode Toggle -->
+    <div class="section ft-mode-section">
+      <div class="ft-mode-toggle">
+        <div class="ft-mode-info">
+          <span class="ft-mode-label">FreeTube Mode</span>
+          <span class="ft-mode-status" id="ftModeStatus">OFF</span>
+        </div>
+        <label class="big-toggle">
+          <input type="checkbox" id="ftModeEnabled">
+          <span class="big-toggle-slider"></span>
+        </label>
+      </div>
+      <div class="ft-mode-desc">
+        <span id="ftModeDesc">Videos play in browser</span>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="section">
+      <div class="section-title">Open in FreeTube</div>
+      <div class="button-group">
+        <button id="openVideoBtn" class="action-btn primary-btn">
+          <span class="btn-icon">▶️</span>
+          <span class="btn-text">Open Video</span>
+        </button>
+        <button id="openVideoTimestampBtn" class="action-btn secondary-btn">
+          <span class="btn-icon">⏱️</span>
+          <span class="btn-text">Open at Current Time</span>
+        </button>
+        <button id="openChannelBtn" class="action-btn secondary-btn">
+          <span class="btn-icon">📺</span>
+          <span class="btn-text">Open Channel</span>
+        </button>
+        <button id="openPlaylistBtn" class="action-btn secondary-btn">
+          <span class="btn-icon">📋</span>
+          <span class="btn-text">Open Playlist</span>
+        </button>
+      </div>
+      <div id="statusMessage" class="status-message"></div>
+    </div>
+
+    <!-- Keyboard Shortcut -->
+    <div class="section">
+      <div class="section-title">⌨️ Keyboard Shortcut</div>
+      <div class="shortcut-info">
+        <span class="shortcut-key">Alt</span>
+        <span class="shortcut-plus">+</span>
+        <span class="shortcut-key">F</span>
+        <span class="shortcut-desc">= Open in FreeTube</span>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <span>Made for FreeTube</span>
+      <a href="https://github.com/FreeTubeApp/FreeTube" target="_blank">GitHub</a>
+    </div>
+
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
