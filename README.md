@@ -13,10 +13,12 @@
   <img src="https://img.shields.io/badge/Version-2.0.0-green.svg" alt="Version 2.0.0">
   <img src="https://img.shields.io/badge/Manifest-V3-orange.svg" alt="Manifest V3">
   <img src="https://img.shields.io/badge/Chrome-Extension-yellow?logo=googlechrome&logoColor=white" alt="Chrome Extension">
-  <img src="https://img.shields.io/badge/Firefox-Add--on-FF7139?logo=firefoxbrowser&logoColor=white" alt="Firefox Add-on-Awaiting Review">
+  <img src="https://img.shields.io/badge/Firefox-Add--on-FF7139?logo=firefoxbrowser&logoColor=white" alt="Firefox Add-on-">
 </p>
 
 ---
+
+Firefox users can install from add-ons section [FireFox]([https://freetubeapp.io/](https://addons.mozilla.org/en-US/firefox/addon/freetube-companion-extension/))
 
 ## About
 
