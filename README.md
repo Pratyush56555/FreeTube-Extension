@@ -18,7 +18,7 @@
 
 ---
 
-Firefox users can install from add-ons section [FireFox](https://addons.mozilla.org/en-US/firefox/addon/freetube-companion-extension/)
+Firefox Extension is still in review.
 
 ## About
 
