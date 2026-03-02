@@ -130,7 +130,8 @@ function openVideo(withTimestamp) {
         chrome.runtime.sendMessage({
           action: "openVideo",
           url: tab.url,
-          timestamp: timestamp
+          timestamp: timestamp,
+          tabId: tab.id
         });
         showStatus("Opening in FreeTube...", "success");
       });
@@ -138,7 +139,8 @@ function openVideo(withTimestamp) {
       chrome.runtime.sendMessage({
         action: "openVideo",
         url: tab.url,
-        timestamp: null
+        timestamp: null,
+        tabId: tab.id
       });
       showStatus("Opening in FreeTube...", "success");
     }
@@ -160,7 +162,8 @@ function openChannel() {
           if (response && response.channelUrl) {
             chrome.runtime.sendMessage({
               action: "openChannel",
-              url: response.channelUrl
+              url: response.channelUrl,
+              tabId: tab.id
             });
             showStatus("Opening channel in FreeTube...", "success");
           } else {
@@ -172,7 +175,8 @@ function openChannel() {
       // Already on channel page — no content script message needed
       chrome.runtime.sendMessage({
         action: "openChannel",
-        url: url
+        url: url,
+        tabId: tab.id
       });
       showStatus("Opening channel in FreeTube...", "success");
     }
@@ -189,7 +193,8 @@ function openPlaylist() {
       void chrome.runtime.lastError; // suppress unchecked error
       chrome.runtime.sendMessage({
         action: "openPlaylist",
-        url: tab.url
+        url: tab.url,
+        tabId: tab.id
       });
       showStatus("Opening playlist in FreeTube...", "success");
     });

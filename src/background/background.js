@@ -12,10 +12,19 @@ chrome.runtime.onInstalled.addListener(function() {
     console.log("FreeTube: Default settings saved");
   });
 
-  // Create context menus
-  createContextMenus();
+  // Remove old context menus then recreate
+  chrome.contextMenus.removeAll(function() {
+    createContextMenus();
+  });
   
   console.log("FreeTube: Extension installed successfully!");
+});
+
+// Recreate context menus on browser startup (MV3 service worker may lose them)
+chrome.runtime.onStartup.addListener(function() {
+  chrome.contextMenus.removeAll(function() {
+    createContextMenus();
+  });
 });
 
 // Create all context menus
@@ -99,42 +108,33 @@ function createContextMenus() {
 
 // Handle context menu clicks
 chrome.contextMenus.onClicked.addListener(function(info, tab) {
-  // Respect FreeTube Mode - do nothing when it's OFF
-  chrome.storage.sync.get(["settings"], function(result) {
-    var settings = result.settings || defaultSettings;
-    if (!settings.ftModeEnabled) {
-      console.log("FreeTube: FT Mode is OFF - context menu action blocked");
-      return;
-    }
+  var url = null;
+  var type = "video";
 
-    var url = null;
-    var type = "video";
+  switch(info.menuItemId) {
+    case "playOnFreeTubeLink":
+      url = info.linkUrl;
+      type = "video";
+      break;
+    case "playOnFreeTubePage":
+      url = info.pageUrl;
+      type = "video";
+      break;
+    case "openChannelInFreeTube":
+    case "openChannelPageInFreeTube":
+      url = info.linkUrl || info.pageUrl;
+      type = "channel";
+      break;
+    case "openPlaylistInFreeTube":
+    case "openPlaylistPageInFreeTube":
+      url = info.linkUrl || info.pageUrl;
+      type = "playlist";
+      break;
+  }
 
-    switch(info.menuItemId) {
-      case "playOnFreeTubeLink":
-        url = info.linkUrl;
-        type = "video";
-        break;
-      case "playOnFreeTubePage":
-        url = info.pageUrl;
-        type = "video";
-        break;
-      case "openChannelInFreeTube":
-      case "openChannelPageInFreeTube":
-        url = info.linkUrl || info.pageUrl;
-        type = "channel";
-        break;
-      case "openPlaylistInFreeTube":
-      case "openPlaylistPageInFreeTube":
-        url = info.linkUrl || info.pageUrl;
-        type = "playlist";
-        break;
-    }
-
-    if (url) {
-      openInFreeTube(url, type, null);
-    }
-  });
+  if (url) {
+    openInFreeTube(url, type, null, tab ? tab.id : null);
+  }
 });
 
 // Handle keyboard shortcut (Alt+F)
@@ -157,7 +157,7 @@ chrome.commands.onCommand.addListener(function(command) {
               if (response && response.timestamp) {
                 timestamp = response.timestamp;
               }
-              openInFreeTube(url, "video", timestamp);
+              openInFreeTube(url, "video", timestamp, tabs[0].id);
             });
           }
         }
@@ -201,12 +201,40 @@ function extractChannelInfo(url) {
     var urlObj = new URL(url);
     var pathname = urlObj.pathname;
 
+    // Handle /@handle URLs (e.g. /@PewDiePie, /@PewDiePie/videos)
+    if (pathname.includes("/@")) {
+      var parts = pathname.split("/@");
+      if (parts.length > 1) {
+        var id = parts[1].split("/")[0];
+        if (id) return { type: "@", id: id };
+      }
+    }
+    
+    // Handle /channel/ID URLs
     if (pathname.includes("/channel/")) {
-      return { type: "channel", id: pathname.split("/channel/")[1].split("/")[0] };
-    } else if (pathname.includes("/c/")) {
-      return { type: "c", id: pathname.split("/c/")[1].split("/")[0] };
-    } else if (pathname.includes("/@")) {
-      return { type: "@", id: pathname.split("/@")[1].split("/")[0] };
+      var parts = pathname.split("/channel/");
+      if (parts.length > 1) {
+        var id = parts[1].split("/")[0];
+        if (id) return { type: "channel", id: id };
+      }
+    }
+    
+    // Handle /c/CustomURL URLs
+    if (pathname.includes("/c/")) {
+      var parts = pathname.split("/c/");
+      if (parts.length > 1) {
+        var id = parts[1].split("/")[0];
+        if (id) return { type: "c", id: id };
+      }
+    }
+    
+    // Handle /user/Username URLs
+    if (pathname.includes("/user/")) {
+      var parts = pathname.split("/user/");
+      if (parts.length > 1) {
+        var id = parts[1].split("/")[0];
+        if (id) return { type: "user", id: id };
+      }
     }
   } catch (e) {
     console.log("FreeTube: Error extracting channel info", e);
@@ -225,8 +253,34 @@ function extractPlaylistId(url) {
   return null;
 }
 
+// Launch a freetube:// URL.
+// Priority 1: Use chrome.tabs.update on the specific tab (keeps context, reliable)
+// Priority 2: Use chrome.tabs.create (fallback for extension pages/popup)
+function launchFreeTubeUrl(freetubeUrl, tabId) {
+  if (tabId) {
+    chrome.tabs.update(tabId, { url: freetubeUrl }, function(tab) {
+      if (chrome.runtime.lastError) {
+        console.log("FreeTube: tabs.update failed, trying tabs.create", chrome.runtime.lastError);
+        chrome.tabs.create({ url: freetubeUrl });
+      }
+    });
+  } else {
+    chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
+      if (tabs[0]) {
+        chrome.tabs.update(tabs[0].id, { url: freetubeUrl }, function(tab) {
+          if (chrome.runtime.lastError) {
+             chrome.tabs.create({ url: freetubeUrl });
+          }
+        });
+      } else {
+        chrome.tabs.create({ url: freetubeUrl });
+      }
+    });
+  }
+}
+
 // Open in FreeTube app
-function openInFreeTube(url, type, timestamp) {
+function openInFreeTube(url, type, timestamp, tabId) {
   var freetubeUrl = null;
 
   console.log("FreeTube: Opening", type, url, "timestamp:", timestamp);
@@ -240,12 +294,17 @@ function openInFreeTube(url, type, timestamp) {
       }
     }
   } else if (type === "channel") {
+    // For channels, we must be careful.
+    // If we're on a channel page, the URL might be https://www.youtube.com/@Channel/videos
+    // We want to open the *channel root* or specific valid channel URL.
     var channelInfo = extractChannelInfo(url);
     if (channelInfo) {
       if (channelInfo.type === "@") {
         freetubeUrl = "freetube://https://www.youtube.com/@" + channelInfo.id;
       } else if (channelInfo.type === "c") {
         freetubeUrl = "freetube://https://www.youtube.com/c/" + channelInfo.id;
+      } else if (channelInfo.type === "user") {
+        freetubeUrl = "freetube://https://www.youtube.com/user/" + channelInfo.id;
       } else {
         freetubeUrl = "freetube://https://www.youtube.com/channel/" + channelInfo.id;
       }
@@ -259,7 +318,7 @@ function openInFreeTube(url, type, timestamp) {
 
   if (freetubeUrl) {
     console.log("FreeTube: Opening URL", freetubeUrl);
-    chrome.tabs.update({ url: freetubeUrl });
+    launchFreeTubeUrl(freetubeUrl, tabId);
   } else {
     console.log("FreeTube: Could not create FreeTube URL");
   }
@@ -272,17 +331,17 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
   switch(request.action) {
     
     case "openVideo":
-      openInFreeTube(request.url, "video", request.timestamp || null);
+      openInFreeTube(request.url, "video", request.timestamp || null, request.tabId || (sender.tab ? sender.tab.id : null));
       sendResponse({ success: true });
       break;
     
     case "openChannel":
-      openInFreeTube(request.url, "channel", null);
+      openInFreeTube(request.url, "channel", null, request.tabId || (sender.tab ? sender.tab.id : null));
       sendResponse({ success: true });
       break;
     
     case "openPlaylist":
-      openInFreeTube(request.url, "playlist", null);
+      openInFreeTube(request.url, "playlist", null, request.tabId || (sender.tab ? sender.tab.id : null));
       sendResponse({ success: true });
       break;
     

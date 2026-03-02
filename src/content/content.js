@@ -99,7 +99,8 @@
     var broadSelectors = [
       "a[href*='/@']",
       "a[href*='/channel/']",
-      "a[href*='/c/']"
+      "a[href*='/c/']",
+      "a[href*='/user/']"
     ];
     for (var k = 0; k < broadSelectors.length; k++) {
       var fallback = document.querySelector(broadSelectors[k]);
@@ -115,7 +116,7 @@
 
   // Helper: check if an href looks like a YouTube channel URL
   function isChannelHref(href) {
-    return href.includes("/@") || href.includes("/channel/") || href.includes("/c/");
+    return href.includes("/@") || href.includes("/channel/") || href.includes("/c/") || href.includes("/user/");
   }
 
   // Extract video ID from href
@@ -175,6 +176,16 @@
         console.log("FreeTube: Settings updated", settings);
         sendResponse({ success: true });
         break;
+
+      case "navigateToFreeTube":
+        console.log("FreeTube: Navigating to", request.url);
+        try {
+          window.location.href = request.url;
+        } catch (err) {
+          console.log("FreeTube: Navigation error", err);
+        }
+        sendResponse({ success: true });
+        break;
     }
 
     return true;
@@ -224,6 +235,22 @@
         
         return false;
       }
+    }
+
+    // Check if it's a channel link
+    if (isChannelHref(link.href)) {
+      console.log("FreeTube: Intercepted channel click", link.href);
+
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+
+      // Navigate directly to FreeTube (same approach as video clicks)
+      var channelFtUrl = "freetube://" + link.href;
+      console.log("FreeTube: Opening channel", channelFtUrl);
+      window.location.href = channelFtUrl;
+
+      return false;
     }
   }
 
